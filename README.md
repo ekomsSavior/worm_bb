@@ -246,3 +246,5 @@ Version: 1.0
 
 ![image1(1)](https://github.com/user-attachments/assets/4e693f4d-10f3-43e2-b204-2c1585e03535)
 
+
+https://substack.com/@ek0mssavi0r/p-193527720
