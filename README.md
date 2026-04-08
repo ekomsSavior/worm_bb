@@ -72,6 +72,10 @@ Remediation actions are generated for each finding: kill processes, delete files
 ### Install Go Dependencies
 
 ```bash
+go mod init worm_bb
+```
+
+```bash
 go get -u github.com/google/gousb
 go get -u github.com/gorilla/websocket
 go get -u github.com/miekg/dns
