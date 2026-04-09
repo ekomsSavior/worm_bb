@@ -254,7 +254,7 @@ Version: 1.0
 
 ---
 
-#Read my wormBB research, walk thru and articles here:
+# Read my wormBB research, walk thru and articles here:
 
 https://medium.com/@ekoms1/the-fascinating-world-of-self-replicating-worms-0e6ad768a001
 
