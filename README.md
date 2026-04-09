@@ -256,6 +256,8 @@ Version: 1.0
 
 # Read my wormBB research, walk thru and articles here:
 
+https://ek0mssavi0r.dev
+
 https://medium.com/@ekoms1/the-fascinating-world-of-self-replicating-worms-0e6ad768a001
 
 https://substack.com/@ek0mssavi0r/p-193527720
