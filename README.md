@@ -1,6 +1,6 @@
 # Worm-BB: Advanced Self-Replicating Framework for Red & Blue Teams
 
-![ek0ms Banner](https://img.shields.io/badge/ek0ms-certified_ethcial_hacker-blue)
+![ek0ms Banner](https://img.shields.io/badge/ek0ms-certified_ethcial_hacker-black)
 
 ![image1(1)](https://github.com/user-attachments/assets/c4cd71ae-1fce-4892-a3ae-c6fd9fe8ba3d)
 
