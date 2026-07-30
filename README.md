@@ -6,7 +6,7 @@
 
 **Educational Purpose Only**
 
-Worm-BB is a research‑grade, multi‑platform worm framework written in Go. It demonstrates modern autonomous propagation techniques, stealth command & control, USB and WiFi‑based spreading, web shell persistence, and data exfiltration. The companion detection and removal tool helps blue teams identify and eradicate Worm‑BB infections in authorised environments.
+Worm-BB is a research‑grade, multi‑platform worm framework written in Go. It demonstrates modern autonomous propagation techniques, stealth command & control, USB and WiFi‑based spreading, web shell persistence, and data exfiltration. The companion detection and removal tool (v2.0) provides comprehensive coverage for blue teams to identify and eradicate Worm‑BB infections across Windows, Linux, and macOS environments.
 
 **This repository is for authorised security testing, research, and defence training only.**
 
@@ -14,7 +14,7 @@ Worm-BB is a research‑grade, multi‑platform worm framework written in Go. It
 
 ## Overview
 
-Worm‑BB implements the classic worm trinity: **Scan → Exploit → Replicate**. It spreads across networks, USB drives, and rogue WiFi access points, establishes deep persistence on Windows, Linux, and macOS, and communicates with a C2 server via WebSockets, DNS tunnelling, and HTTP beacons. The detector tool (`worm_bb_detector`) scans for all known Worm‑BB artifacts – processes, files, registry keys, scheduled tasks, cron jobs, systemd services, WMI subscriptions, USB autorun files, and network multicast traffic.
+Worm‑BB implements the classic worm trinity: **Scan → Exploit → Replicate**. It spreads across networks, USB drives, and rogue WiFi access points, establishes deep persistence on Windows, Linux, and macOS, and communicates with a C2 server via WebSockets, DNS tunnelling, and HTTP beacons. The detector tool (`worm_bb_detector` v2.0) provides complete coverage for all Worm‑BB v4.0 artifacts – processes, files, registry keys, scheduled tasks, cron jobs, systemd services, init scripts, launch agents, WMI subscriptions, USB autorun files, web shells, WiFi evil portal artifacts, P2P multicast traffic, and memory signatures.
 
 Both components are written entirely in Go, making them cross‑platform, statically linked, and difficult to detect by signature‑based AVs (when compiled with obfuscation).
 
@@ -36,24 +36,49 @@ Both components are written entirely in Go, making them cross‑platform, static
 | **Data Exfiltration**| Batched, AES‑encrypted exfil to MySQL or HTTPS endpoint; steals creds, files, screenshots. |
 | **Persistence**      | Windows: Run keys, scheduled tasks, WMI, Startup folder. Linux: crontab, systemd, init.d, rc.local, udev, SSH keys. macOS: launchd, cron. |
 
-### Detection & Removal Tool (`worm_bb_detector.go`)
+### Detection & Removal Tool v2.0 (`worm_bb_detector.go`)
 
-| Scan Type            | Detects                                                                 |
-|----------------------|-------------------------------------------------------------------------|
-| Processes            | Names `system-update`, `SystemUpdate`, `worm_bb`, suspicious cmdline.   |
-| Filesystem           | Known worm paths, temp directories, USB autorun files.                  |
-| Registry (Windows)   | Run keys containing `SystemUpdate`.                                     |
-| Scheduled Tasks      | `SystemUpdateTask`, `SystemUpdateTask_startup`.                         |
-| WMI (Windows)        | `__EventFilter` named `SystemUpdateFilter`.                             |
-| Cron (Linux)         | `@reboot /tmp/system-update`, `*/30 * * * * /tmp/system-update`.        |
-| Systemd (Linux)      | `system-update.service`.                                                |
-| udev (Linux)         | `99-usb-autorun.rules`.                                                 |
-| SSH Keys             | `authorized_keys` containing `worm-bb-key`.                             |
-| USB Drives           | `autorun.inf`, `SystemUpdate.exe`, `.lnk` files.                        |
-| Network              | Multicast listener on `239.255.42.42:4242`, listening ports 4242–8443.  |
-| Memory (basic)       | Loaded module strings on Windows (`tasklist /M`).                       |
+| Scan Category       | Detects |
+|---------------------|---------|
+| **Processes**       | Names `system-update`, `SystemUpdate`, `worm_bb`, suspicious cmdline with WiFi/evil portal indicators. |
+| **Filesystem**      | Known worm paths, temp directories, hidden files, web shells, WiFi configs, init scripts. |
+| **Registry**        | Run keys containing `SystemUpdate` across HKCU and HKLM hives. |
+| **Scheduled Tasks** | `SystemUpdateTask`, `SystemUpdateTask_startup` with hourly triggers. |
+| **WMI**             | `__EventFilter` (`SystemUpdateFilter`), `CommandLineEventConsumer` (`SystemUpdateConsumer`), and filter-to-consumer bindings. |
+| **Cron (Linux)**    | `@reboot /tmp/system-update`, `*/30 * * * * /tmp/system-update`, and other scheduled executions. |
+| **Systemd**         | `system-update.service` with restart policies and multi-user target. |
+| **Init.d**          | `/etc/init.d/system-update` with SysV init scripts. |
+| **rc.local**        | `/etc/rc.local` entries executing `/tmp/system-update &`. |
+| **LaunchAgents**    | `com.apple.systemupdate.plist` with RunAtLoad and KeepAlive. |
+| **udev**            | `99-usb-autorun.rules` for USB auto-execution on Linux/ARM. |
+| **SSH Keys**        | `authorized_keys` containing `worm-bb-key` backdoor. |
+| **USB Drives**      | `autorun.inf`, `SystemUpdate.exe`, `.lnk` files (Windows); `SystemUpdate.app` (macOS); `.system-update`, `.system-update.desktop` (Linux). |
+| **WebShells**       | PHP/ASP/Python shells and backdoors in web directories (`shell.php`, `backdoor.php`, `shell.aspx`, `system-update.php`). |
+| **WiFi/Evil Portal**| `hostapd.conf`, `dhcpd.conf`, dnsmasq configs, iptables NAT rules, captive portal artifacts. |
+| **P2P Network**     | Multicast listener on `239.255.42.42:4242`, listening P2P ports (4242, 4243, 4444), active P2P connections. |
+| **Mutex/Lock**      | Windows mutex `Global\SystemUpdateMutex`, Linux lock file `/tmp/.system-update.lock`. |
+| **Memory**          | Loaded module strings on Windows (`tasklist /M`), memory maps on Linux (`/proc/*/maps`). |
 
-Remediation actions are generated for each finding: kill processes, delete files, remove registry keys, clean cron/systemd, purge USB malware, and delete WMI subscriptions. The tool supports interactive (prompt per action) or fully automatic (`--auto`) mode.
+#### Remediation Actions
+
+The detector generates comprehensive remediation actions for each finding:
+
+| Action               | Description |
+|----------------------|-------------|
+| `KILL_PROCESS`       | Terminate suspicious worm processes |
+| `DELETE_FILE`        | Remove worm executables, configs, and artifacts |
+| `DELETE_REGISTRY`    | Remove worm registry keys and values |
+| `DELETE_TASK`        | Delete scheduled tasks |
+| `DELETE_CRON`        | Remove cron jobs |
+| `STOP_SERVICE`       | Stop and disable systemd services |
+| `DELETE_WMI`         | Remove WMI event filters and consumers |
+| `CLEAN_USB`          | Comprehensive USB drive cleanup (all platforms) |
+| `DELETE_SSH_KEY`     | Remove backdoor SSH keys |
+| `DELETE_LAUNCH`      | Unload and remove macOS launch agents |
+| `DELETE_RCLOCAL`     | Clean rc.local entries |
+| `DELETE_INIT`        | Remove init.d scripts |
+
+The tool supports interactive (prompt per action) or fully automatic (`--auto`) mode.
 
 ---
 
@@ -108,7 +133,7 @@ CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o worm_bb_mac 
 
 > **Note**: On Windows, CGO is required for USB detection (`gousb`). If you don't need USB, you can disable CGO, but the USB propagator will be skipped.
 
-### Compile the Detector (`worm_bb_detector.go`)
+### Compile the Detector v2.0 (`worm_bb_detector.go`)
 
 ```bash
 # Linux
@@ -159,7 +184,7 @@ worm_bb.exe
 
 On first run, the worm:
 1. Checks for existing instances (mutex, lock file, listening ports).
-2. Installs persistence (registry, crontab, systemd, launchd, etc.).
+2. Installs persistence (registry, crontab, systemd, launchd, init.d, rc.local, etc.).
 3. Joins the P2P multicast group.
 4. Begins scanning and propagating.
 
@@ -179,10 +204,13 @@ To remove the worm after testing, either run the detection tool (see next sectio
 **Linux**
 ```bash
 pkill -f system-update
-rm -f /tmp/system-update /etc/systemd/system/system-update.service
+rm -f /tmp/system-update /tmp/.system-update /tmp/worm
+rm -f /etc/systemd/system/system-update.service
 crontab -l | grep -v system-update | crontab -
 rm -f /etc/udev/rules.d/99-usb-autorun.rules
 rm -f /etc/init.d/system-update
+update-rc.d system-update remove
+sed -i '/\/tmp\/system-update &/d' /etc/rc.local
 ```
 
 **Windows**
@@ -190,7 +218,9 @@ rm -f /etc/init.d/system-update
 taskkill /F /IM SystemUpdate.exe
 schtasks /delete /tn SystemUpdateTask /f
 reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v SystemUpdate /f
+reg delete HKLM\Software\Microsoft\Windows\CurrentVersion\Run /v SystemUpdate /f
 del "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\SystemUpdate.exe"
+del "C:\Windows\Temp\system-update.exe"
 ```
 
 **macOS**
@@ -198,13 +228,14 @@ del "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\SystemUpdate.exe"
 launchctl unload ~/Library/LaunchAgents/com.apple.systemupdate.plist
 rm ~/Library/LaunchAgents/com.apple.systemupdate.plist
 crontab -l | grep -v systemupdate | crontab -
+rm -f /tmp/system-update
 ```
 
 ---
 
-## Usage – Detection & Removal Tool
+## Usage – Detection & Removal Tool v2.0
 
-The detector scans for all Worm‑BB indicators and optionally removes them.
+The detector scans for all Worm‑BB indicators across all platforms and optionally removes them.
 
 ### Basic Scan (Interactive)
 
@@ -214,6 +245,9 @@ sudo ./worm_bb_detector
 
 # Windows (run as Administrator)
 worm_bb_detector.exe
+
+# macOS
+sudo ./worm_bb_detector_mac
 ```
 
 You will be prompted before each remediation action.
@@ -225,7 +259,7 @@ sudo ./worm_bb_detector --auto --network
 ```
 
 - `--auto` – automatically executes all remediations without prompting.
-- `--network` – enables multicast listener test and port scanning.
+- `--network` – enables full network scanning (multicast, P2P ports, WiFi artifacts).
 
 ### Save JSON Report
 
@@ -237,13 +271,17 @@ sudo ./worm_bb_detector --output scan_report.json
 
 ```
 ================================================
-WORM-BB DETECTION AND REMOVAL TOOL
-Version: 1.0
+WORM-BB DETECTION AND REMOVAL TOOL v2.0
+Full coverage for Worm-BB v4.0-DEFCON-ARM
 ================================================
 [*] Scanning for worm processes...
 [*] Scanning for worm files...
-[!] WORM DETECTED! Severity: HIGH
-[!] Found 4 indicators
+[*] Scanning for USB drives...
+[*] Scanning for WebShells...
+[*] Scanning for WiFi artifacts...
+[*] Scanning for P2P communication...
+[!] WORM DETECTED! Severity: CRITICAL
+[!] Found 12 indicators
 ...
 [?] Remediation: KILL_PROCESS
     Target: PID 1337
@@ -277,3 +315,4 @@ Version: 1.0
 - https://ek0mssavi0r.dev  
 - https://medium.com/@ekoms1/the-fascinating-world-of-self-replicating-worms-0e6ad768a001  
 - https://substack.com/@ek0mssavi0r/p-193527720
+
