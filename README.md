@@ -22,7 +22,7 @@ Both components are written entirely in Go, making them cross‑platform, static
 
 ## Capabilities
 
-### Worm Framework (`worm.go`)
+### Worm Framework (`worm_arm.go`)
 
 | Module               | Description |
 |----------------------|-------------|
