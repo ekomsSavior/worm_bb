@@ -1,6 +1,6 @@
 // worm.go - Complete Worm Framework - Cross-Platform (Windows/Linux/macOS/ARM)
-// EDUCATIONAL PURPOSE ONLY - Understand to Defend
-// DEF CON 2026 - Advanced Malware Research
+// EDUCATIONAL PURPOSE ONLY
+// DEFCON34 - Advanced Malware Research
 
 package main
 
