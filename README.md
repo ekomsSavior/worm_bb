@@ -1,4 +1,4 @@
-# Worm-BB: Advanced Self-Replicating Worm for Red & Blue Teams
+# Worm-BB: Self-Replicating Worm for Red & Blue Teams
 
 ![ek0ms Banner](https://img.shields.io/badge/ek0ms-certified_ethical_hacker-black)
 
@@ -8,7 +8,7 @@
 
 Worm-BB is a research‑grade, multi‑platform worm framework written in Go. It demonstrates modern autonomous propagation techniques, stealth command & control, USB and WiFi‑based spreading, web shell persistence, and data exfiltration. The companion detection and removal tool (v2.0) provides comprehensive coverage for blue teams to identify and eradicate Worm‑BB infections across Windows, Linux, and macOS environments.
 
-**This repository is for authorised security testing, research, and defence training only.**
+**This repository is for authorized security testing, research, and defense training only.**
 
 ---
 
@@ -87,9 +87,9 @@ The tool supports interactive (prompt per action) or fully automatic (`--auto`) 
 ### Prerequisites
 
 - Go 1.16+ (`go version`)
-- **Optional dependencies** for USB and WiFi modules (Linux only):
+- **Optional dependencies** for WiFi modules (Linux only):
   ```bash
-  sudo apt install libnl-3-dev libnl-genl-3-dev libpcap-dev hostapd dnsmasq
+  sudo apt install hostapd dnsmasq
   ```
   (On ARM/embedded, these packages are also available via `apt`.)
 - For cross‑compilation to Windows (optional):
@@ -101,37 +101,37 @@ The tool supports interactive (prompt per action) or fully automatic (`--auto`) 
 
 ```bash
 go mod init worm_bb
-go get -u github.com/google/gousb
 go get -u github.com/gorilla/websocket
 go get -u github.com/miekg/dns
 go get -u github.com/go-sql-driver/mysql
 go get -u golang.org/x/crypto/ssh
-go get -u golang.org/x/sys/windows
-go get -u golang.org/x/sys/windows/registry
 ```
 
 ### Compile the Worm (`worm.go`)
 
-The worm uses CGO for USB and WiFi components; ensure CGO is enabled on relevant platforms.
+The worm is now a **single, self-contained file** that compiles on any platform without external dependencies or build tags.
 
 ```bash
 # Linux (x86_64)
-CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o worm_bb worm.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o worm_bb worm.go
 
 # Linux (ARMv7, e.g. Raspberry Pi)
-CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=7 CC=arm-linux-gnueabihf-gcc go build -ldflags="-s -w" -o worm_bb_arm worm.go
+CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -ldflags="-s -w" -o worm_bb_arm worm.go
 
 # Linux (ARM64)
-CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc go build -ldflags="-s -w" -o worm_bb_arm64 worm.go
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o worm_bb_arm64 worm.go
 
 # Windows (x86_64) – hide console
-CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -ldflags="-s -w -H=windowsgui" -o worm_bb.exe worm.go
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -H=windowsgui" -o worm_bb.exe worm.go
 
 # macOS (Intel)
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o worm_bb_mac worm.go
+
+# macOS (Apple Silicon)
+CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o worm_bb_mac_arm64 worm.go
 ```
 
-> **Note**: On Windows, CGO is required for USB detection (`gousb`). If you don't need USB, you can disable CGO, but the USB propagator will be skipped.
+> **Note**: The worm now uses `CGO_ENABLED=0` for all builds, making it fully statically linked and portable across systems.
 
 ### Compile the Detector v2.0 (`worm_bb_detector.go`)
 
@@ -315,4 +315,4 @@ Full coverage for Worm-BB v4.0-DEFCON-ARM
 - https://ek0mssavi0r.dev  
 - https://medium.com/@ekoms1/the-fascinating-world-of-self-replicating-worms-0e6ad768a001  
 - https://substack.com/@ek0mssavi0r/p-193527720
-
+```
