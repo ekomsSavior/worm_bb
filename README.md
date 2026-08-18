@@ -362,7 +362,7 @@ Full coverage for Worm-BB v4.0-DEFCON-ARM
 
 ---
 
-## 🛡️ vCenter-Specific Detection
+##  vCenter-Specific Detection
 
 The detector v2.0 now includes specific checks for vCenter compromise:
 
